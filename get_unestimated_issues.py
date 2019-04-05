@@ -15,7 +15,7 @@ How to:
     - In this case stored using pass (cli password manager)
     - GITLAB_PRIVATE_TOKEN=$(pass show work/CSS/gitlab/private_token) python get_unestimated_issues.py --user <user_name> --url <gitlab_url>
   * The Private Token can be given as argument (-t, --token)
-    - python get_unestimated_issues.py -token $(pass show work/CSS/gitlab/private_token) --user <user_name> --url <gitlab_url>
+    - python get_unestimated_issues.py --token $(pass show work/CSS/gitlab/private_token) --user <user_name> --url <gitlab_url>
   * If the Private Token is set both ways, GITLAB_PRIVATE_TOKEN has precedence.
   * Either way the gitlab host/url and user are mandatory.
   * Expected url: https://gitlab.example.com

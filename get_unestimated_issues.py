@@ -12,13 +12,15 @@ How to:
   * Get help
     - python get_unestimated_issues.py -h
   * The Private Token can be given as environemnt variable GITLAB_PRIVATE_TOKEN
-    - In this case stored using pass (cli password manager)
+    - I read the password using pass (cli password manager)
     - GITLAB_PRIVATE_TOKEN=$(pass show work/CSS/gitlab/private_token) python get_unestimated_issues.py --user <user_name> --url <gitlab_url>
   * The Private Token can be given as argument (-t, --token)
     - python get_unestimated_issues.py --token $(pass show work/CSS/gitlab/private_token) --user <user_name> --url <gitlab_url>
   * If the Private Token is set both ways, GITLAB_PRIVATE_TOKEN has precedence.
-  * Either way the gitlab host/url and user are mandatory.
-  * Expected url: https://gitlab.example.com
+  * The user can be given as argument (-l, --user)
+
+Optimizations:
+  * Implement pagination and make sure to get ALL the projects and issues.
 """
 
 
@@ -28,8 +30,8 @@ GITHUB_API_ENDPOINT = "/api/v4"
 USERS_ENDPOINT = "/users"
 ISSUES_ENDPOINT = "/issues"
 
-parser = argparse.ArgumentParser(description='Get unestimated gitlab issues.')
-parser.add_argument('-l', '--url', required=True, help='Gitlab host/url/server, expected: https://gitlab.example.com.')
+parser = argparse.ArgumentParser(description='Get unestimated gitlab issues for a user.')
+parser.add_argument('-l', '--url', required=True, default="https://example.gitlab.com", help='Gitlab host/url/server.')
 parser.add_argument('-t', '--token', nargs='?', help='Private Token to access gitlab API. If not given as argument, set GITLAB_PRIVATE_TOKEN.')
 parser.add_argument('-u', '--user', required=True, help='Gitlab username to get information for.')
 args = parser.parse_args()

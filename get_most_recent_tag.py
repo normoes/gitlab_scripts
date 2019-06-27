@@ -15,11 +15,13 @@ How to:
     - I read the password using pass (cli password manager)
     - GITLAB_PRIVATE_TOKEN=$(pass show work/CSS/gitlab/private_token) python get_most_recent_tag.py --url <gitlab_url> --group <gitlab_group_id>
   * The Private Token can be given as argument (-t, --token)
-    - python get_most_recent_tag.py --token $(pass show work/CSS/gitlab/private_token) --url <gitlab_url> -- group <gitlab_group_id>
+    - python get_most_recent_tag.py --token $(pass show work/CSS/gitlab/private_token) --url <gitlab_url> --group <gitlab_group_id>
   * If the Private Token is set both ways, GITLAB_PRIVATE_TOKEN has precedence.
   * The gitlab group id can be given as environemnt variable GITLAB_GROUP_ID
   * The gitlab group id can be given as argument (-g, --group)
   * If the gitlab group id is set both ways, GITLAB_GROUP_ID has precedence.
+  * The url can be given as argument (-u, --user)
+  * The output can be limited to only the most recent tags of each repository (-l, --latest)
 """
 
 
@@ -32,16 +34,20 @@ PROJECT_ENDPOINT = "/projects" + "/{project_id}"
 TAGS_ENDPOINT = "/repository/tags"
 PROJECT_TAGS_ENDPOINT = f"{PROJECT_ENDPOINT}" + f"{TAGS_ENDPOINT}"
 
-parser = argparse.ArgumentParser(description='Get most recent tags in group repositories.')
-parser.add_argument('-l', '--url', required=True, default="https://example.gitlab.com", help='Gitlab host/url/server.')
+parser = argparse.ArgumentParser(description='Get most recent tags in group repositories.', epilog="python get_most_recent_tag.py --token $(pass show work/CSS/gitlab/private_token) --url <gitlab_url> --group <gitlab_group_id> --latest", formatter_class=argparse.ArgumentDefaultsHelpFormatter)
+parser.add_argument('-u', '--url', required=True, default="https://example.gitlab.com", help='Gitlab host/url/server.')
 parser.add_argument('-g', '--group', required=True, default="1", help='Gitlab group id.')
 parser.add_argument('-t', '--token', nargs='?', help='Private Token to access gitlab API. If not given as argument, set GITLAB_PRIVATE_TOKEN.')
+# default=False is implied by action='store_true'
+parser.add_argument('-l', '--latest', action='store_true', help='Show most recent tag only.')
 args = parser.parse_args()
 
 if not PRIVATE_TOKEN:
     PRIVATE_TOKEN = args.token
 if not GROUP_ID:
     GROUP_ID = args.group
+LATEST_ONLY = args.latest
+
 URL = args.url + GITHUB_API_ENDPOINT
 
 headers = {"PRIVATE-TOKEN": PRIVATE_TOKEN}
@@ -65,6 +71,8 @@ def get_most_recent_tags(group_id=-1):
         tags = response.json()
         for tag in tags:
             projects_tags[project.get("name", None)].append(tag.get("name", None))
+            if LATEST_ONLY:
+                break
     return projects_tags
 
 if __name__ == "__main__":

@@ -30,7 +30,7 @@ GITHUB_API_ENDPOINT = "/api/v4"
 USERS_ENDPOINT = "/users"
 ISSUES_ENDPOINT = "/issues"
 
-parser = argparse.ArgumentParser(description='Get unestimated gitlab issues for a user.')
+parser = argparse.ArgumentParser(description='Get unestimated gitlab issues for a user.', formatter_class=argparse.ArgumentDefaultsHelpFormatter)
 parser.add_argument('-l', '--url', required=True, default="https://example.gitlab.com", help='Gitlab host/url/server.')
 parser.add_argument('-t', '--token', nargs='?', help='Private Token to access gitlab API. If not given as argument, set GITLAB_PRIVATE_TOKEN.')
 parser.add_argument('-u', '--user', required=True, help='Gitlab username to get information for.')

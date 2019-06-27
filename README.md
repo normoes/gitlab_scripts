@@ -43,4 +43,31 @@ How to:
   * The **gitlab group id** can be given as environemnt variable `GITLAB_GROUP_ID`
   * The **gitlab group id** can be given as argument (`-g`, `--group`)
   * If the **gitlab group id** is set both ways, `GITLAB_GROUP_ID` has precedence.
+  * The **url** can be given as argument (`-u`, `--user`)
+  * The output can be limited to only the most recent tags of each repository (`-l`, `--latest`)
 
+## Get source module version used in local directories
+
+`get_tf_module_source_version.py`
+
+I use zipped terraform modules, which are stored in an AWS S3 bucket, like this:
+```
+source = s3::https://s3-eu-west-1.amazonaws.com/tf-modules/tf-module/tf-module-1.2.2.zip
+```
+
+This tool is called with a directory or a file or several of them (also mixed directoriess and files).
+It expects directories containing terraform configurations or `main.tf` files.
+
+Up to now, only `main.tf` files are checked.
+
+The script eventually returns files and source modules found within, like this:
+```
+/path_to_repo.git/tf_service/main.tf
+  "s3::https://s3-eu-west-1.amazonaws.com/tf-modules/tf-module-service/tf-module-service-1.2.5.zip"
+/path_to_repo.git/tf_module/main.tf
+  "s3::https://s3-eu-west-1.amazonaws.com/tf-modules/tf-module/tf-module-1.2.2.zip"
+/path_to_repo.git/tf_service1/main.tf
+  "s3::https://s3-eu-west-1.amazonaws.com/tf-modules/tf-module-service/tf-module-service-1.2.5.zip"
+/path_to_repo.git/tf_network/main.tf
+  "s3::https://s3-eu-west-1.amazonaws.com/tf-modules/tf-module-network/tf-module-network-1.1.zip"
+```

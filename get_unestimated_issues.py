@@ -17,7 +17,8 @@ How to:
   * The Private Token can be given as argument (-t, --token)
     - python get_unestimated_issues.py --token $(pass show work/CSS/gitlab/private_token) --user <user_name> --url <gitlab_url>
   * If the Private Token is set both ways, GITLAB_PRIVATE_TOKEN has precedence.
-  * The user can be given as argument (-l, --user)
+  * The user can be given as argument (-u, --user)
+  * The url can be given as argument (-l, --url)
 
 Optimizations:
   * Implement pagination and make sure to get ALL the projects and issues.

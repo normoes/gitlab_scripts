@@ -16,7 +16,8 @@ How to:
   * The **Private Token** can be given as argument (`-t`, `--token`)
     - `python get_unestimated_issues.py --token $(pass show work/CSS/gitlab/private_token) --user <user_name> --url <gitlab_url>`
   * If the **Private Token** is set both ways, `GITLAB_PRIVATE_TOKEN` has precedence.
-  * The **user** can be given as argument (`-l`, `--user`)
+  * The **user** can be given as argument (`-u`, `--user`)
+  * The **url** can be given as argument (`-l`, --`url`)
 
 Optimizations:
   * Implement pagination and make sure to get ALL the projects and issues.
@@ -46,7 +47,7 @@ How to:
   * The **gitlab group id** can be given as environemnt variable `GITLAB_GROUP_ID`
   * The **gitlab group id** can be given as argument (`-g`, `--group`)
   * If the **gitlab group id** is set both ways, `GITLAB_GROUP_ID` has precedence.
-  * The **url** can be given as argument (`-u`, `--user`)
+  * The **url** can be given as argument (`-u`, `--url`)
   * The output can be limited to only the most recent tags of each repository (`-l`, `--latest`)
 
 ## Get source module version used in local directories

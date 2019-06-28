@@ -20,7 +20,7 @@ How to:
   * The gitlab group id can be given as environemnt variable GITLAB_GROUP_ID
   * The gitlab group id can be given as argument (-g, --group)
   * If the gitlab group id is set both ways, GITLAB_GROUP_ID has precedence.
-  * The url can be given as argument (-u, --user)
+  * The url can be given as argument (-u, --url)
   * The output can be limited to only the most recent tags of each repository (-l, --latest)
 """
 

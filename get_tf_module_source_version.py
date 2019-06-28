@@ -2,6 +2,18 @@ import os
 import argparse
 from collections import defaultdict
 
+"""
+Goal:
+  * Get the version of terraform source modules from local folders containing .tf files.
+
+How to:
+  * Get help
+    - python get_tf_module_source_version..py -h
+  * The path can be given as environemnt variable "TERRAFORM_PATH
+    - python get_tf_module_source_version..py --path <path_to_terraform_file_or_folder>
+  * The path can be given as argument (-p, --path)
+  * If the path is set both ways, "TERRAFORM_PATH has precedence.
+"""
 PATH = os.environ.get("TERRAFORM_PATH", None)
 
 parser = argparse.ArgumentParser(description='Get terraform source module versions.', formatter_class=argparse.ArgumentDefaultsHelpFormatter)
@@ -11,7 +23,7 @@ args = parser.parse_args()
 if not PATH:
     PATH = args.path
 
-ALLOWED_FILES = ["main.tf"]
+ALLOWED_FILE_EXTENSIONS = [".tf"]
 
 
 def get_tf_module_version(paths=PATH):
@@ -24,11 +36,11 @@ def get_tf_module_version(paths=PATH):
         if os.path.isdir(path):
             for root, subFolders, files in os.walk(path):
                 for name in files:
-                    if name in ALLOWED_FILES and root.find("/.terraform") == -1 and root.find("/.git") == -1:
+                    if os.path.splitext(name)[1] in ALLOWED_FILE_EXTENSIONS and root.find("/.terraform") == -1 and root.find("/.git") == -1:
                         filenames.append(os.path.join(root, name))
         elif os.path.isfile(path):
             name = os.path.basename(path)
-            if not name in ALLOWED_FILES:
+            if not os.path.splitext(name)[1] in ALLOWED_FILE_EXTENSIONS:
                 print(f"File is not allowed {path}.")
                 continue
             filenames.append(path)

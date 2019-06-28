@@ -28,6 +28,9 @@ Optimizations:
 
 The tool takes a group id and lists all the tags of the contained repositories.
 
+The repositories I check with `get_most_recent_tag.py` create zip files of terraform modules and store them in an AWS S3 bucket in a deployment pipeline.
+I regularly use `get_most_recent_tag.py` in combination with `get_tf_module_source_version.py`, in order to check whether I use the most recent version of the modules.
+
 Goal:
   * Get most recent tags of the repositories within a group.
 
@@ -56,9 +59,11 @@ source = s3::https://s3-eu-west-1.amazonaws.com/tf-modules/tf-module/tf-module-1
 ```
 
 This tool is called with a directory or a file or several of them (also mixed directoriess and files).
-It expects directories containing terraform configurations or `main.tf` files.
+It expects directories containing terraform configuration files with the file extension`.tf`.
 
-Up to now, only `main.tf` files are checked.
+Only files with the file extension `.tf` are considered.
+
+I regularly use `get_tf_module_source_version.py` in combination with `get_most_recent_tag.py`, in order to check whether I use the most recent version of the modules.
 
 The script eventually returns files and source modules found within, like this:
 ```
@@ -71,3 +76,14 @@ The script eventually returns files and source modules found within, like this:
 /path_to_repo.git/tf_network/main.tf
   "s3::https://s3-eu-west-1.amazonaws.com/tf-modules/tf-module-network/tf-module-network-1.1.zip"
 ```
+
+Goal:
+  * Get the version of terraform source modules from local folders containing .tf files.
+
+How to:
+  * Get help
+    - `python get_tf_module_source_version..py -h`
+  * The **path** can be given as environemnt variable `"TERRAFORM_PATH`
+    - `python get_tf_module_source_version..py --path <path_to_terraform_file_or_folder>`
+  * The **path** can be given as argument (`-p`, `--path`)
+  * If the **path** is set both ways, `"TERRAFORM_PATH` has precedence.

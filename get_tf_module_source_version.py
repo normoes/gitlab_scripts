@@ -45,11 +45,11 @@ def get_tf_module_version(paths=PATH):
                 continue
             filenames.append(path)
 
-    for name in set(filenames): 
+    for name in set(filenames):
         with open(name, "r") as file_handler:
             for line in file_handler:
                 line = line.strip()
-                if line.startswith("#"):
+                if not line and line.startswith("#"):
                     continue
                 if line.find("source") >= 0 and line.find(".zip") > 0:
                     modules[name].append(line)
@@ -59,4 +59,4 @@ if __name__ == '__main__':
     modules = get_tf_module_version()
     for k, v in modules.items():
         print(k)
-        print("  " +  "\n  ".join(t.split()[2] for t in v)) 
+        print("  " +  "\n  ".join(t.split()[2] for t in v))

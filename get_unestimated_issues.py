@@ -51,7 +51,7 @@ def get_unestimated_issues():
         print(f"Received status code {response.status_code} with {response.text}")
         sys.exit
     user_id = response.json()[0].get("id", None)
-     
+
     # get all users' issues
     response = requests.get(URL + f"{ISSUES_ENDPOINT}?scope=assigned_to_me&assignee_id={user_id}&state=opened", headers=headers)
     if not response.status_code == 200:

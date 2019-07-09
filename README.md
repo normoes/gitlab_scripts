@@ -88,3 +88,37 @@ How to:
     - `python get_tf_module_source_version..py --path <path_to_terraform_file_or_folder>`
   * The **path** can be given as argument (`-p`, `--path`)
   * If the **path** is set both ways, `"TERRAFORM_PATH` has precedence.
+
+## Replace reference of included gitlab-ci files
+
+`check_included_ci_ref.py`
+
+Replaces the reference/branch of remotely included `.gitlab-ci.yml` files directly within the file (overwrites the file).
+
+
+I use base or common gitlab stages, that I include into the project's `.gitlab-ci.yml` file like this:
+```
+include:
+  - project: 'general/common-gitlab-stages'
+    ref: master
+    file: '/.gitlab-ci-deploy_image.yml'
+```
+
+`ref` defines the branch of the remote repositoryto getthe file from.
+
+In my project - where I include the common gitlab stages - committing on the `develop` branch does not requiredany specific `ref`.
+
+However,
+* committing on the `staging` branch requires the `staging` or `master` refs.
+* committing on the `master` branch requires the `master` ref.
+
+So, for `staging` and `master` I want to include from the appropriate references/branches only.
+
+Goal:
+  * Check included `.gitlab-ci.yml` references.
+
+How to:
+  * Get help
+    - `check_included_ci_ref.py -h`
+    - `python check_included_ci_ref.py --file <path_to_gitlab_ci_file>`
+  * The **gitlab-ci yml file** can be given as argument (`-f`, `--file`)

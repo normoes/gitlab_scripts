@@ -17,10 +17,10 @@ How to:
 """
 
 parser = argparse.ArgumentParser(description='Check ref of included .gitlab-ci.yml files.', epilog="python check_included_ci_ref.py --file <path_to_gitlab_ci_file>", formatter_class=argparse.ArgumentDefaultsHelpFormatter)
-parser.add_argument('-f', '--file', default="./.gitlab-ci.yml", help='Path to .gitlab-ci yml file.')
+# parser.add_argument('-f', '--file', default="./.gitlab-ci.yml", help='Path to .gitlab-ci yml file.')
+parser.add_argument('filenames', nargs='*', help='Filenames to check.')
 args = parser.parse_args()
 
-GITLAB_CI_FILE = args.file
 
 REF_LINE = re.compile("^[ ]*ref:[ ] *(\w*)")
 
@@ -56,48 +56,48 @@ def get_appropriate_ref(ref_line, branch):
     return replaced_line
 
 
-def check_included_refs(file_path=GITLAB_CI_FILE):
-    if not os.path.exists(file_path) or not os.path.isfile(file_path):
-        print("Is this the correct file?")
+def check_included_refs(filenames):
+    working_files = 0
+    for filename in filenames:
+        if not os.path.exists(filename) or not os.path.isfile(filename):
+            print(f"Is this the correct file: {filename}")
+            continue
+        abs_path = os.path.realpath(filename)
+        base_path = os.path.dirname(filename)
+        file_name = os.path.basename(filename)
+        print(abs_path)
+        print(base_path)
+        print(file_name)
+        # Get current branch
+        repo = Repo(base_path)
+        branch = repo.active_branch.name
+        print(branch)
+        # Replace refs used in .gitlba-ci.yml
+        content = None
+        with open(filename, "r") as file_handler:
+            content = file_handler.readlines()
+        if content and branch in BRANCH_REF_MAP:
+            new_content = list()
+            replaced = False
+            for line in content:
+                # line = line.strip()
+                # if line:
+                # if REF_LINE.match(line, re.IGNORECASE):
+                if REF_LINE.match(line):
+                    new_line = get_appropriate_ref(ref_line=line, branch=branch)
+                    if not new_line == line:
+                        replaced = True
+                else:
+                    new_line = line
+                new_content.append(new_line)
+            if replaced:
+                with open(filename, "w") as file_handler:
+                    file_handler.write("".join(new_content))
+                print(f"  >> Refs replaced in {filename}")
+        working_files += 1
+    if filenames and working_files == 0:
         sys.exit(1)
-    abs_path = os.path.abspath(GITLAB_CI_FILE)
-    base_path = os.path.dirname(GITLAB_CI_FILE)
-    file_name = os.path.basename(GITLAB_CI_FILE)
-    print(abs_path)
-    print(base_path)
-    print(file_name)
-    # Get current branch
-    repo = Repo(base_path)
-    branch = repo.active_branch.name
-    print(branch)
-    # Replace refs used in .gitlba-ci.yml
-    content = None
-    with open(file_path, "r") as file_handler:
-        content = file_handler.readlines()
-    if not branch in BRANCH_REF_MAP:
-        print(f"No ref preference on branch \"{branch}\".")
-        return content
-    new_content = list()
-    if not content:
-        print("File is empty.")
-        sys.exit(1)
-    replaced = False
-    for line in content:
-        # line = line.strip()
-        # if line:
-        # if REF_LINE.match(line, re.IGNORECASE):
-        if REF_LINE.match(line):
-            new_line = get_appropriate_ref(ref_line=line, branch=branch)
-            if new_line != line:
-                replaced = True
-        else:
-            new_line = line
-        new_content.append(new_line)
-    if replaced:
-        with open(file_path, "w") as file_handler:
-            file_handler.write("".join(new_content))
-        print(f"Refs replaced in {file_path}")
 
 
 if __name__ == "__main__":
-    check_included_refs()
+    check_included_refs(filenames=args.filenames)

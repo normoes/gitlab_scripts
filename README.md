@@ -122,3 +122,6 @@ How to:
     - `check_included_ci_ref.py -h`
     - `python check_included_ci_ref.py --file <path_to_gitlab_ci_file>`
   * The **gitlab-ci yml file** can be given as argument (`-f`, `--file`)
+
+Optimizations:
+  * Only simple words are considered in ref/branch name, using `\w+`

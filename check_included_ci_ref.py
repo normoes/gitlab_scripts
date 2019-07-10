@@ -12,17 +12,20 @@ Goal:
 How to:
   * Get help
     - check_included_ci_ref.py -h
-    - python check_included_ci_ref.py --file <path_to_gitlab_ci_file>
-  * The file can be given as argument (-f, --file)
+    - python check_included_ci_ref.py <file1> <another_file> <path_to_file>
+  * Files can be given as arguments to the script.
+
+Optimizations:
+  * Only simple words are considered in ref/branch name, using `\w+`
 """
 
-parser = argparse.ArgumentParser(description='Check ref of included .gitlab-ci.yml files.', epilog="python check_included_ci_ref.py --file <path_to_gitlab_ci_file>", formatter_class=argparse.ArgumentDefaultsHelpFormatter)
+parser = argparse.ArgumentParser(description='Check ref of included .gitlab-ci.yml files.', epilog="python check_included_ci_ref.py <path_to_gitlab_ci_file>", formatter_class=argparse.ArgumentDefaultsHelpFormatter)
 # parser.add_argument('-f', '--file', default="./.gitlab-ci.yml", help='Path to .gitlab-ci yml file.')
 parser.add_argument('filenames', nargs='*', help='Filenames to check.')
 args = parser.parse_args()
 
 
-REF_LINE = re.compile("^[ ]*ref:[ ] *(\w*)")
+REF_LINE = re.compile("^[ ]*ref:[ ] *(\w+)")
 
 STAGING_BRANCH = "staging"
 MASTER_BRANCH = "master"
@@ -34,8 +37,6 @@ BRANCH_REF_MAP = {
 
 
 def get_appropriate_ref(ref_line, branch):
-    print(f"Branch: {branch}")
-    print(f"Line: {ref_line}")
     # reference = REF_LINE.findall(ref_line, re.IGNORECASE)[0]
     reference = REF_LINE.findall(ref_line)[0]
 
@@ -47,17 +48,14 @@ def get_appropriate_ref(ref_line, branch):
     else:
         new_reference = reference
 
-    print(f"--- {reference}")
-    print(f"--- {new_reference}")
-    print(f"--- {ref_line}")
     # replaced_line = re.sub(reference, new_reference, ref_line, flags=re.IGNORECASE)
     replaced_line = re.sub(reference, new_reference, ref_line)
-    print(f"--- {replaced_line}")
     return replaced_line
 
 
 def check_included_refs(filenames):
     working_files = 0
+    retv = 0
     for filename in filenames:
         if not os.path.exists(filename) or not os.path.isfile(filename):
             print(f"Is this the correct file: {filename}")
@@ -65,13 +63,9 @@ def check_included_refs(filenames):
         abs_path = os.path.realpath(filename)
         base_path = os.path.dirname(filename)
         file_name = os.path.basename(filename)
-        print(abs_path)
-        print(base_path)
-        print(file_name)
         # Get current branch
         repo = Repo(base_path)
         branch = repo.active_branch.name
-        print(branch)
         # Replace refs used in .gitlba-ci.yml
         content = None
         with open(filename, "r") as file_handler:
@@ -80,8 +74,6 @@ def check_included_refs(filenames):
             new_content = list()
             replaced = False
             for line in content:
-                # line = line.strip()
-                # if line:
                 # if REF_LINE.match(line, re.IGNORECASE):
                 if REF_LINE.match(line):
                     new_line = get_appropriate_ref(ref_line=line, branch=branch)
@@ -90,14 +82,17 @@ def check_included_refs(filenames):
                 else:
                     new_line = line
                 new_content.append(new_line)
+            # Rewrite the file, if changed
             if replaced:
                 with open(filename, "w") as file_handler:
                     file_handler.write("".join(new_content))
                 print(f"  >> Refs replaced in {filename}")
         working_files += 1
     if filenames and working_files == 0:
-        sys.exit(1)
+        retv = 1
+
+    return retv
 
 
 if __name__ == "__main__":
-    check_included_refs(filenames=args.filenames)
+    sys.exit(check_included_refs(filenames=args.filenames))

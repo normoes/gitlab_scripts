@@ -1,10 +1,3 @@
-import requests
-import os
-import argparse
-from collections import defaultdict
-import sys
-import logging
-
 """
 Goal:
   * Create MR.
@@ -14,15 +7,22 @@ How to:
     - python create_mr.py -h
   * The Private Token can be given as environemnt variable GITLAB_PRIVATE_TOKEN
     - I read the password using pass (cli password manager)
-    - GITLAB_PRIVATE_TOKEN=$(pass show work/CSS/gitlab/private_token) python create.py --url <gitlab_url> --project <gitlab_project_id> --source-branch <gitlab_source_branch> --target-branch <gitlab_target_branch> --title <tite_of_mr> --assignee-id <gitlab_user_id> --remove-source-branch
+    - GITLAB_PRIVATE_TOKEN=$(pass show work/CSS/gitlab/private_token) python create_mr.py --url <gitlab_url> --source-branch <gitlab_source_branch> --target-branch <gitlab_target_branch> --title <tite_of_mr> --assignee-id <gitlab_user_id> --remove-source-branch --project <gitlab_project_id>
   * The Private Token can be given as argument (-t, --token)
-    - python get_most_recent_tag.py --token $(pass show work/CSS/gitlab/private_token) --url <gitlab_url> --project <gitlab_project_id> --source-branch <gitlab_source_branch> --target-branch <gitlab_target_branch> --title <tite_of_mr> --assignee-id <gitlab_user_id> --remove-source-branch
+    - python create_mr.py --token $(pass show work/CSS/gitlab/private_token) --url <gitlab_url> --source-branch <gitlab_source_branch> --target-branch <gitlab_target_branch> --title <tite_of_mr> --assignee-id <gitlab_user_id> --remove-source-branch --project <gitlab_project_id>
   * If the Private Token is set both ways, GITLAB_PRIVATE_TOKEN has precedence.
   * The gitlab project id can be given as environemnt variable GITLAB_PROJECT_ID
   * The gitlab project id can be given as argument (-p, --project)
   * If the gitlab project id is set both ways, GITLAB_PROJECT_ID has precedence.
   * The url can be given as argument (-u, --url)
 """
+
+import requests
+import os
+import argparse
+from collections import defaultdict
+import sys
+import logging
 
 logging.basicConfig()
 logger = logging.getLogger(__name__)
@@ -44,6 +44,9 @@ MR_ENDPOINT = "/merge_requests"
 TAGS_ENDPOINT = "/repository/tags"
 PROJECT_TAGS_ENDPOINT = f"{PROJECT_ENDPOINT}" + f"{TAGS_ENDPOINT}"
 
+CAN_BE_MERGED = "can_be_merged"
+CANNOT_BE_MERGED = "cannot_be_merged"
+
 def create_mr(url=URL, project_id=PROJECT_ID, source_branch=SOURCE_BRANCH, target_branch=TARGET_BRANCH, title=MR_TITLE, assignee_id=ASSIGNEE_ID, headers=None, remove_source_branch=False):
     url = url + GITHUB_API_ENDPOINT
 
@@ -52,7 +55,7 @@ def create_mr(url=URL, project_id=PROJECT_ID, source_branch=SOURCE_BRANCH, targe
         "source_branch": source_branch,
         "target_branch": target_branch,
         "remove_source_branch": remove_source_branch,
-        "title": f"WIP: {title}",
+        "title": f"{title}",
         "assignee_id": assignee_id,
     }
 
@@ -65,7 +68,9 @@ def create_mr(url=URL, project_id=PROJECT_ID, source_branch=SOURCE_BRANCH, targe
     json_response = response.json()
     logger.debug(json_response)
 
+    iid = json_response.get("iid", None)
     merge_status = json_response.get("merge_status", None)
+    has_conflicts = json_response.get("has_conflicts", None)
     web_url = json_response.get("web_url", None)
     user_info =  json_response.get("user", None)
     assignee_can_merge = None
@@ -73,15 +78,29 @@ def create_mr(url=URL, project_id=PROJECT_ID, source_branch=SOURCE_BRANCH, targe
         assignee_can_merge = user_info.get("can_merge", None)
 
     return {
+        "iid": iid,
         "assignee_can_merge": assignee_can_merge,
         "merge_status": merge_status,
+        "has_conflicts": has_conflicts,
         "web_url": web_url,
+        "project_id": project_id,
+        "assignee_id": assignee_id,
+        "source_branch": source_branch,
+        "target_branch": target_branch,
     }
 
 
 
 def main():
+    from _version import __version__
+
     parser = argparse.ArgumentParser(description='Create MR.', epilog="python create_mr.py --token $(pass show work/CSS/gitlab/private_token) --url <gitlab_url> --project <gitlab_project_id> --source-branch <gitlab_source_branch> --target-branch <gitlab_target_branch> --title <tite_of_mr> --assignee-id <gitlab_user_id> --remove-source-branch", formatter_class=argparse.ArgumentDefaultsHelpFormatter)
+    parser.add_argument(
+        "--version",
+        action="version",
+        version="%(prog)s {version}".format(version=__version__),
+    )
+
     parser.add_argument('-u', '--url', required=True, default="https://example.gitlab.com", help='Gitlab host/url/server.')
     parser.add_argument('-p', '--project', required=True, default="-1", help='Gitlab project id.')
     parser.add_argument('-t', '--token', nargs='?', help='Private Token to access gitlab API. If not given as argument, set GITLAB_PRIVATE_TOKEN.')
@@ -102,40 +121,13 @@ def main():
     else:
          logger.setLevel(logging.INFO)
 
-    if PRIVATE_TOKEN:
-        private_token = PRIVATE_TOKEN
-    else:
-        private_token = args.token
-
-    if PROJECT_ID:
-        project_id = PROJECT_ID
-    else:
-        project_id = args.project
-
-    if SOURCE_BRANCH:
-        source_branch = SOURCE_BRANCH
-    else:
-        source_branch = args.source_branch
-
-    if TARGET_BRANCH:
-        target_branch = TARGET_BRANCH
-    else:
-        target_branch = args.target_branch
-
-    if MR_TITLE:
-        title = MR_TITLE
-    else:
-        title = args.title
-
-    if ASSIGNEE_ID:
-        assignee_id = ASSIGNEEE_ID
-    else:
-        assignee_id = args.assignee_id
-
-    if URL:
-        url = URL
-    else:
-        url = args.url
+    private_token = args.token
+    project_id = args.project
+    source_branch = args.source_branch
+    target_branch = args.target_branch
+    title = args.title
+    assignee_id = args.assignee_id
+    url = args.url
 
     remove_source_branch = args.remove_source_branch
 

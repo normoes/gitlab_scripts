@@ -3,6 +3,7 @@ import os
 import argparse
 from collections import defaultdict
 import sys
+import json
 
 """
 Goal:
@@ -92,9 +93,10 @@ def main():
     headers = {"PRIVATE-TOKEN": private_token}
 
     tags = get_most_recent_tags(url=url, group_id=group_id, headers=headers, latest_only=latest_only)
-    for k, v in tags.items():
-        print(k)
-        print("  " +  "\n  ".join(t for t in v))
+    print(json.dumps(tags, indent=2))
+    # for k, v in tags.items():
+    #     print(k)
+    #     print("  " +  "\n  ".join(t for t in v))
 
 
 if __name__ == "__main__":

@@ -41,11 +41,19 @@ def create_pipeline(url=environment_variables.URL, project_id=environment_variab
 
     project_endpoint = PROJECT_ENDPOINT.format(project_id=quote_plus(project_id))
     complete_url = url + project_endpoint + PIPELINE_ENDPOINT.format(reference=reference)
-    response = requests.post(complete_url, headers=headers)
+    response = requests.post(url = complete_url, headers=headers)
     if not response.status_code in [200, 201]:
-        error = f"Received status code {response.status_code} with {response.text} for {complete_url}."
+        error = {
+            "message": "Cannot create pipeline.",
+            "reason": f"Received status code {response.status_code} with {response.text}.",
+            "project_id": project_id,
+        }
         logger.error(error)
-        return {"error": error}
+        return {
+            "error": error,
+            "project_id": project_id,
+            "url": complete_url,
+        }
 
     json_response = response.json()
     logger.debug(json_response)

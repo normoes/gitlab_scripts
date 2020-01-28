@@ -1,5 +1,6 @@
 import sys
 import logging
+import json
 
 from create_pipeline import create_pipeline
 import environment_variables
@@ -9,20 +10,12 @@ logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
 
 
-services_file = "/home/norman/cryptosphere/xmr.to/projects_services.txt"
-
 def create_pipelines(url=environment_variables.URL, project_ids=environment_variables.PROJECT_ID, reference=environment_variables.REFERENCE, headers=None):
-#     with open(services_file, "r") as fh:
-#         services = fh.readlines()
-#         for service in services:
-#             service, project_id = service.strip().split("=")
-#             print(f"Creating pipeline for service '{service}' [project '{project_id}'].")
-
     pipelines = []
     try:
         for project_id in project_ids:
-            print(f"Creating pipeline for project_id '{project_id}'.")
-            pipelines.append(create_pipeline(url=url,project_id=project_id, reference=reference, headers=headers))
+            logger.info(f"Trying to create pipeline for project '{project_id}'.")
+            pipelines.append(create_pipeline(url=url, project_id=project_id, reference=reference, headers=headers))
     except (Exception) as e:
         logger.error(f"Error: str(e).")
 
@@ -54,9 +47,8 @@ def main():
 
     created_pipelines = create_pipelines(url=url, project_ids=project_ids, reference=reference, headers=headers)
     logger.debug(created_pipelines)
-    print("Created pipelines:")
     for pipeline in created_pipelines:
-        print(f"   {pipeline}")
+        print(json.dumps(pipeline))
 
 
 if __name__ == "__main__":

@@ -35,16 +35,21 @@ CANNOT_BE_MERGED = "cannot_be_merged"
 
 def empty_mrs(url=URL, mr=None, headers=None):
     mr_versions = list()
-    # if  CANNOT_BE_MERGED == mr["merge_status"] and mr["has_conflicts"]:
     url = url + GITHUB_API_ENDPOINT
 
     endpoint = ""
     if mr["project_id"]:
         endpoint = PROJECT_ENDPOINT.format(project_id=mr["project_id"])
-    response = requests.get(url + endpoint + MR_ENDPOINT + MR_VERSION_ENDPOINT.format(mr_iid=mr["iid"]), headers=headers)
+    complete_url = url + endpoint + MR_ENDPOINT + MR_VERSION_ENDPOINT.format(mr_iid=mr["iid"])
+    response = requests.get(url = complete_url, headers=headers)
     if not response.status_code in [200, 201]:
-        print(f"Received status code {response.status_code} with {response.text}")
-        sys.exit
+        return {
+            "error": "Cannot get merge request.",
+            "reason": "Received status code {response.status_code} with {response.text}.",
+            "project_id": project_id,
+            "url": complete_url,
+        }
+        sys.exit(1)
 
     json_response = response.json()
     logger.debug(json_response)

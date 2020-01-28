@@ -23,19 +23,14 @@ import argparse
 from collections import defaultdict
 import sys
 import logging
+from urllib.parse import quote_plus
+
+import environment_variables
 
 logging.basicConfig()
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
 
-
-PRIVATE_TOKEN = os.environ.get("GITLAB_PRIVATE_TOKEN", None)
-PROJECT_ID = os.environ.get("GITLAB_PROJECT_ID", None)
-SOURCE_BRANCH = os.environ.get("GITLAB_SOURCE_BRANCH", None)
-TARGET_BRANCH = os.environ.get("GITLAB_TARGET_BRANCH", None)
-MR_TITLE = os.environ.get("GITLAB_MR_TITLE", None)
-ASSIGNEE_ID  = os.environ.get("GITLAB_ASSIGNEE_ID", None)
-URL = os.environ.get("GITLAB_URL", None)
 
 GITHUB_API_ENDPOINT = "/api/v4"
 ISSUES_ENDPOINT = "/issues"
@@ -47,7 +42,7 @@ PROJECT_TAGS_ENDPOINT = f"{PROJECT_ENDPOINT}" + f"{TAGS_ENDPOINT}"
 CAN_BE_MERGED = "can_be_merged"
 CANNOT_BE_MERGED = "cannot_be_merged"
 
-def create_mr(url=URL, project_id=PROJECT_ID, source_branch=SOURCE_BRANCH, target_branch=TARGET_BRANCH, title=MR_TITLE, assignee_id=ASSIGNEE_ID, headers=None, remove_source_branch=False):
+def create_mr(url=environment_variables.URL, project_id=environment_variables.PROJECT_ID, source_branch=environment_variables.SOURCE_BRANCH, target_branch=environment_variables.TARGET_BRANCH, title=environment_variables.MR_TITLE, assignee_id=environment_variables.ASSIGNEE_ID, headers=None, remove_source_branch=False):
     url = url + GITHUB_API_ENDPOINT
 
     data = {
@@ -59,11 +54,63 @@ def create_mr(url=URL, project_id=PROJECT_ID, source_branch=SOURCE_BRANCH, targe
         "assignee_id": assignee_id,
     }
 
-    project_endpoint = PROJECT_ENDPOINT.format(project_id=project_id)
-    response = requests.post(url + project_endpoint + MR_ENDPOINT, json=data, headers=headers)
+    project_endpoint = PROJECT_ENDPOINT.format(project_id=quote_plus(project_id))
+    # Compare branches before creating the merge request.
+    # Using '&straight=true' (default is 'false') to show 'diffs' in response.
+    # Using 'false' returned empty 'diffs'.
+    complete_url = url + project_endpoint + f"/repository/compare?from={source_branch}&to={target_branch}&straight=true"
+    response = requests.get(url = complete_url, headers=headers)
     if not response.status_code in [200, 201]:
-        print(f"Received status code {response.status_code} with {response.text}")
-        sys.exit
+        error = {
+            "message": CANNOT_BE_MERGED,
+            "reason": f"Received status code {response.status_code} with {response.text}.",
+            "project_id": project_id,
+        }
+        logger.error(error)
+        return {
+            "error": error,
+            "project_id": project_id,
+            "source_branch": source_branch,
+            "target_branch": target_branch,
+            "url": complete_url,
+            "url": complete_url,
+        }
+
+    json_response = response.json()
+
+    diffs = json_response["diffs"]
+
+    if not diffs:
+        error = {
+            "message": CANNOT_BE_MERGED,
+            "reason": "No changes detected. Not creating empty MR.",
+            "project_id": project_id,
+        }
+        logger.error(error)
+        return {
+            "error": error,
+            "project_id": project_id,
+            "source_branch": source_branch,
+            "target_branch": target_branch,
+            "url": complete_url,
+        }
+
+    complete_url = url + project_endpoint + MR_ENDPOINT
+    response = requests.post(url = complete_url, json=data, headers=headers)
+    if not response.status_code in [200, 201]:
+        error = {
+            "message": CANNOT_BE_MERGED,
+            "reason": f"Received status code {response.status_code} with {response.text}.",
+            "project_id": project_id,
+        }
+        logger.error(error)
+        return {
+            "error": error,
+            "project_id": project_id,
+            "source_branch": source_branch,
+            "target_branch": target_branch,
+            "url": complete_url,
+        }
 
     json_response = response.json()
     logger.debug(json_response)
@@ -90,29 +137,11 @@ def create_mr(url=URL, project_id=PROJECT_ID, source_branch=SOURCE_BRANCH, targe
     }
 
 
-
 def main():
-    from _version import __version__
+    import arguments
 
-    parser = argparse.ArgumentParser(description='Create MR.', epilog="python create_mr.py --token $(pass show work/CSS/gitlab/private_token) --url <gitlab_url> --project <gitlab_project_id> --source-branch <gitlab_source_branch> --target-branch <gitlab_target_branch> --title <tite_of_mr> --assignee-id <gitlab_user_id> --remove-source-branch", formatter_class=argparse.ArgumentDefaultsHelpFormatter)
-    parser.add_argument(
-        "--version",
-        action="version",
-        version="%(prog)s {version}".format(version=__version__),
-    )
-
-    parser.add_argument('-u', '--url', required=True, default="https://example.gitlab.com", help='Gitlab host/url/server.')
+    parser = arguments.get_cli_arguments()
     parser.add_argument('-p', '--project', required=True, default="-1", help='Gitlab project id.')
-    parser.add_argument('-t', '--token', nargs='?', help='Private Token to access gitlab API. If not given as argument, set GITLAB_PRIVATE_TOKEN.')
-    parser.add_argument('--source-branch', required=True, default="staging", help='Source branch.')
-    parser.add_argument('--target-branch', required=True, default="master", help='Target branch.')
-    parser.add_argument('--title', required=True, default="MR title.", help='Merge request title.')
-    parser.add_argument('--assignee-id', required=True, default=-1, help='Gitlab user id of assignee.')
-    # default=False is implied by action='store_true'
-    parser.add_argument('--remove-source-branch', action='store_true', help='Remove the source branch after merging.')
-    parser.add_argument(
-        "--debug", action='store_true',  help="Show debug info."
-    )
 
     args = parser.parse_args()
 
@@ -128,7 +157,6 @@ def main():
     title = args.title
     assignee_id = args.assignee_id
     url = args.url
-
     remove_source_branch = args.remove_source_branch
 
     headers = {
@@ -138,9 +166,6 @@ def main():
 
     created_mr = create_mr(url=url, project_id=project_id, source_branch=source_branch, target_branch=target_branch, title=title, assignee_id=assignee_id, headers=headers, remove_source_branch=remove_source_branch)
     print(created_mr)
-    # for k, v in tags.items():
-    #     print(k)
-    #     print("  " +  "\n  ".join(t for t in v))
 
 
 if __name__ == "__main__":

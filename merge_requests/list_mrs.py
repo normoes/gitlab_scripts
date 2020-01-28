@@ -63,10 +63,16 @@ def list_mrs(url=URL, project_id=PROJECT_ID, group_id=GROUP_ID, state=STATE_DEFA
         endpoint = PROJECT_ENDPOINT.format(project_id=project_id)
     elif group_id:
         endpoint = GROUP_ENDPOINT.format(group_id=group_id)
-    response = requests.get(url + endpoint + MR_ENDPOINT + f"?state={state}", headers=headers)
+    complete_url = url + endpoint + MR_ENDPOINT + f"?state={state}"
+    response = requests.get(url = complete_url, headers=headers)
     if not response.status_code in [200, 201]:
-        print(f"Received status code {response.status_code} with {response.text}")
-        sys.exit
+        return {
+            "error": "Cannot get merge request.",
+            "reason": "Received status code {response.status_code} with {response.text}.",
+            "project_id": project_id,
+            "url": complete_url,
+        }
+        sys.exit(1)
 
     json_response = response.json()
     logger.debug(json_response)

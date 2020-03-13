@@ -1,10 +1,4 @@
 #!/usr/bin/env python
-from git import Repo
-import argparse
-import os
-import re
-import sys
-
 """
 Goal:
   * Check included .gitlab-ci.yml references.
@@ -16,16 +10,27 @@ How to:
   * Files can be given as arguments to the script.
 
 Optimizations:
-  * Only simple words are considered in ref/branch name, using `\w+`
+  * Only simple words are considered in ref/branch name, using `\w+`  # noqa: W605
 """
 
-parser = argparse.ArgumentParser(description='Check ref of included .gitlab-ci.yml files.', epilog="python check_included_ci_ref.py <path_to_gitlab_ci_file>", formatter_class=argparse.ArgumentDefaultsHelpFormatter)
+from git import Repo
+import argparse
+import os
+import re
+import sys
+
+parser = argparse.ArgumentParser(
+    description="Check ref of included .gitlab-ci.yml files.",
+    epilog="python check_included_ci_ref.py <path_to_gitlab_ci_file>",
+    formatter_class=argparse.ArgumentDefaultsHelpFormatter,
+)
 # parser.add_argument('-f', '--file', default="./.gitlab-ci.yml", help='Path to .gitlab-ci yml file.')
-parser.add_argument('filenames', nargs='*', help='Filenames to check.')
+parser.add_argument("filenames", nargs="*", help="Filenames to check.")
 args = parser.parse_args()
 
 
-REF_LINE = re.compile("^[ ]*ref:[ ] *(\w+)")
+# Make 'flake8' ignore [W605 invalid escape sequence] - escape sequence necessary for regular expression.
+REF_LINE = re.compile("^[ ]*ref:[ ] *(\w+)")  # noqa: W605
 
 STAGING_BRANCH = "staging"
 MASTER_BRANCH = "master"
@@ -40,7 +45,7 @@ def get_appropriate_ref(ref_line, branch):
     # reference = REF_LINE.findall(ref_line, re.IGNORECASE)[0]
     reference = REF_LINE.findall(ref_line)[0]
 
-    if not reference in BRANCH_REF_MAP[branch]:
+    if reference not in BRANCH_REF_MAP[branch]:
         if STAGING_BRANCH == branch:
             new_reference = STAGING_BRANCH
         elif MASTER_BRANCH == branch:
@@ -60,9 +65,7 @@ def check_included_refs(filenames):
         if not os.path.exists(filename) or not os.path.isfile(filename):
             print(f"Is this the correct file: {filename}")
             continue
-        abs_path = os.path.realpath(filename)
         base_path = os.path.dirname(filename)
-        file_name = os.path.basename(filename)
         # Get current branch
         repo = Repo(base_path)
         branch = repo.active_branch.name

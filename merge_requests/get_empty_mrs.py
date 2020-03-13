@@ -8,8 +8,6 @@ Goal:
 
 import requests
 import os
-import argparse
-from collections import defaultdict
 import sys
 import logging
 
@@ -40,13 +38,14 @@ def empty_mrs(url=URL, mr=None, headers=None):
     endpoint = ""
     if mr["project_id"]:
         endpoint = PROJECT_ENDPOINT.format(project_id=mr["project_id"])
-    complete_url = url + endpoint + MR_ENDPOINT + MR_VERSION_ENDPOINT.format(mr_iid=mr["iid"])
-    response = requests.get(url = complete_url, headers=headers)
-    if not response.status_code in [200, 201]:
+    complete_url = (
+        url + endpoint + MR_ENDPOINT + MR_VERSION_ENDPOINT.format(mr_iid=mr["iid"])
+    )
+    response = requests.get(url=complete_url, headers=headers)
+    if response.status_code not in [200, 201]:
         return {
             "error": "Cannot get merge request.",
             "reason": "Received status code {response.status_code} with {response.text}.",
-            "project_id": project_id,
             "url": complete_url,
         }
         sys.exit(1)
@@ -54,17 +53,18 @@ def empty_mrs(url=URL, mr=None, headers=None):
     json_response = response.json()
     logger.debug(json_response)
 
-
     for version in json_response:
         created_at = version.get("created_at", None)
         real_size = version.get("real_size", None)
         state = version.get("state", None)
 
-        mr_versions.append({
-            "created_at": created_at,
-            "real_size": real_size,
-            "state": state,
-            "web_url": mr["web_url"],
-        })
+        mr_versions.append(
+            {
+                "created_at": created_at,
+                "real_size": real_size,
+                "state": state,
+                "web_url": mr["web_url"],
+            }
+        )
 
     return mr_versions

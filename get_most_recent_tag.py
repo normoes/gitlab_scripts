@@ -19,9 +19,7 @@ How to:
 """
 
 
-import logging
 import os
-import argparse
 from collections import defaultdict
 import sys
 import json
@@ -47,6 +45,7 @@ PROJECT_TAGS_ENDPOINT = f"{PROJECT_ENDPOINT}" + f"{TAGS_ENDPOINT}"
 
 projects_tags_queue = Queue()
 
+
 def get_tags(url=URL, project=None, headers=None, latest_only=False):
     """Get tags from a repository.
 
@@ -61,7 +60,9 @@ def get_tags(url=URL, project=None, headers=None, latest_only=False):
     project_endpoint = PROJECT_TAGS_ENDPOINT.format(project_id=project_id)
     response = requests.get(url + project_endpoint, headers=headers)
     if not response.status_code == 200:
-        print(f"Project '{project_name}' received status code '{response.status_code}' with '{response.text}'.")
+        print(
+            f"Project '{project_name}' received status code '{response.status_code}' with '{response.text}'."
+        )
         sys.exit(1)
     tags = response.json()
     project_tags = defaultdict(list)
@@ -73,6 +74,7 @@ def get_tags(url=URL, project=None, headers=None, latest_only=False):
     projects_tags_queue.put(project_tags)
 
     return latest_only
+
 
 def get_project_tags(url=URL, group_id=GROUP_ID, headers=None, latest_only=False):
     url = url + GITHUB_API_ENDPOINT
@@ -98,7 +100,15 @@ def get_project_tags(url=URL, group_id=GROUP_ID, headers=None, latest_only=False
 
     for project in projects:
         if not latest_only:
-            thread = Thread(target=get_tags, kwargs={"url": url, "project": project, "headers": headers, "latest_only": latest_only, })
+            thread = Thread(
+                target=get_tags,
+                kwargs={
+                    "url": url,
+                    "project": project,
+                    "headers": headers,
+                    "latest_only": latest_only,
+                },
+            )
             thread.daemon = True
             thread.start()
             threads.append(thread)
@@ -124,12 +134,33 @@ def get_project_tags(url=URL, group_id=GROUP_ID, headers=None, latest_only=False
 
 
 def main():
-    parser = argparse.ArgumentParser(description='Get most recent tags in group repositories.', epilog="python get_most_recent_tag.py --token $(pass show work/CSS/gitlab/private_token) --url <gitlab_url> --group <gitlab_group_id> --latest", formatter_class=argparse.ArgumentDefaultsHelpFormatter)
-    parser.add_argument('-u', '--url', required=True, default="https://example.gitlab.com", help='Gitlab host/url/server.')
-    parser.add_argument('-g', '--group', required=True, default="-1", help='Gitlab group id.')
-    parser.add_argument('-t', '--token', nargs='?', help='Private Token to access gitlab API. If not given as argument, set GITLAB_PRIVATE_TOKEN.')
+    import argparse
+
+    parser = argparse.ArgumentParser(
+        description="Get most recent tags in group repositories.",
+        epilog="python get_most_recent_tag.py --token $(pass show work/CSS/gitlab/private_token) --url <gitlab_url> --group <gitlab_group_id> --latest",
+        formatter_class=argparse.ArgumentDefaultsHelpFormatter,
+    )
+    parser.add_argument(
+        "-u",
+        "--url",
+        required=True,
+        default="https://example.gitlab.com",
+        help="Gitlab host/url/server.",
+    )
+    parser.add_argument(
+        "-g", "--group", required=True, default="-1", help="Gitlab group id."
+    )
+    parser.add_argument(
+        "-t",
+        "--token",
+        nargs="?",
+        help="Private Token to access gitlab API. If not given as argument, set GITLAB_PRIVATE_TOKEN.",
+    )
     # default=False is implied by action='store_true'
-    parser.add_argument('-l', '--latest', action='store_true', help='Show most recent tag only.')
+    parser.add_argument(
+        "-l", "--latest", action="store_true", help="Show most recent tag only."
+    )
     args = parser.parse_args()
 
     url = args.url
@@ -139,7 +170,9 @@ def main():
 
     headers = {"PRIVATE-TOKEN": private_token}
 
-    tags = get_project_tags(url=url, group_id=group_id, headers=headers, latest_only=latest_only)
+    tags = get_project_tags(
+        url=url, group_id=group_id, headers=headers, latest_only=latest_only
+    )
     print(json.dumps(tags, indent=2))
 
 

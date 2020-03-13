@@ -18,9 +18,6 @@ How to:
 """
 
 import requests
-import os
-import argparse
-from collections import defaultdict
 import sys
 import logging
 from urllib.parse import quote_plus
@@ -42,7 +39,17 @@ PROJECT_TAGS_ENDPOINT = f"{PROJECT_ENDPOINT}" + f"{TAGS_ENDPOINT}"
 CAN_BE_MERGED = "can_be_merged"
 CANNOT_BE_MERGED = "cannot_be_merged"
 
-def create_mr(url=environment_variables.URL, project_id=environment_variables.PROJECT_ID, source_branch=environment_variables.SOURCE_BRANCH, target_branch=environment_variables.TARGET_BRANCH, title=environment_variables.MR_TITLE, assignee_id=environment_variables.ASSIGNEE_ID, headers=None, remove_source_branch=False):
+
+def create_mr(
+    url=environment_variables.URL,
+    project_id=environment_variables.PROJECT_ID,
+    source_branch=environment_variables.SOURCE_BRANCH,
+    target_branch=environment_variables.TARGET_BRANCH,
+    title=environment_variables.MR_TITLE,
+    assignee_id=environment_variables.ASSIGNEE_ID,
+    headers=None,
+    remove_source_branch=False,
+):
     url = url + GITHUB_API_ENDPOINT
 
     data = {
@@ -58,9 +65,13 @@ def create_mr(url=environment_variables.URL, project_id=environment_variables.PR
     # Compare branches before creating the merge request.
     # Using '&straight=true' (default is 'false') to show 'diffs' in response.
     # Using 'false' returned empty 'diffs'.
-    complete_url = url + project_endpoint + f"/repository/compare?from={source_branch}&to={target_branch}&straight=true"
-    response = requests.get(url = complete_url, headers=headers)
-    if not response.status_code in [200, 201]:
+    complete_url = (
+        url
+        + project_endpoint
+        + f"/repository/compare?from={source_branch}&to={target_branch}&straight=true"
+    )
+    response = requests.get(url=complete_url, headers=headers)
+    if response.status_code not in [200, 201]:
         error = {
             "message": CANNOT_BE_MERGED,
             "reason": f"Received status code {response.status_code} with {response.text}.",
@@ -72,7 +83,6 @@ def create_mr(url=environment_variables.URL, project_id=environment_variables.PR
             "project_id": project_id,
             "source_branch": source_branch,
             "target_branch": target_branch,
-            "url": complete_url,
             "url": complete_url,
         }
 
@@ -96,8 +106,8 @@ def create_mr(url=environment_variables.URL, project_id=environment_variables.PR
         }
 
     complete_url = url + project_endpoint + MR_ENDPOINT
-    response = requests.post(url = complete_url, json=data, headers=headers)
-    if not response.status_code in [200, 201]:
+    response = requests.post(url=complete_url, json=data, headers=headers)
+    if response.status_code not in [200, 201]:
         error = {
             "message": CANNOT_BE_MERGED,
             "reason": f"Received status code {response.status_code} with {response.text}.",
@@ -119,7 +129,7 @@ def create_mr(url=environment_variables.URL, project_id=environment_variables.PR
     merge_status = json_response.get("merge_status", None)
     has_conflicts = json_response.get("has_conflicts", None)
     web_url = json_response.get("web_url", None)
-    user_info =  json_response.get("user", None)
+    user_info = json_response.get("user", None)
     assignee_can_merge = None
     if user_info:
         assignee_can_merge = user_info.get("can_merge", None)
@@ -141,14 +151,16 @@ def main():
     import arguments
 
     parser = arguments.get_cli_arguments()
-    parser.add_argument('-p', '--project', required=True, default="-1", help='Gitlab project id.')
+    parser.add_argument(
+        "-p", "--project", required=True, default="-1", help="Gitlab project id."
+    )
 
     args = parser.parse_args()
 
     if args.debug:
-         logger.setLevel(logging.DEBUG)
+        logger.setLevel(logging.DEBUG)
     else:
-         logger.setLevel(logging.INFO)
+        logger.setLevel(logging.INFO)
 
     private_token = args.token
     project_id = args.project
@@ -164,7 +176,16 @@ def main():
         "Content-Type": "application/json",
     }
 
-    created_mr = create_mr(url=url, project_id=project_id, source_branch=source_branch, target_branch=target_branch, title=title, assignee_id=assignee_id, headers=headers, remove_source_branch=remove_source_branch)
+    created_mr = create_mr(
+        url=url,
+        project_id=project_id,
+        source_branch=source_branch,
+        target_branch=target_branch,
+        title=title,
+        assignee_id=assignee_id,
+        headers=headers,
+        remove_source_branch=remove_source_branch,
+    )
     print(created_mr)
 
 

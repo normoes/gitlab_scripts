@@ -25,12 +25,17 @@ ALLOWED_FILE_EXTENSIONS = [".tf"]
 
 modules_tags_queue = Queue()
 
+
 def get_tags(path=""):
     filenames = []
     if os.path.isdir(path):
         for root, subFolders, files in os.walk(path):
             for name in files:
-                if os.path.splitext(name)[1] in ALLOWED_FILE_EXTENSIONS and root.find("/.terraform") == -1 and root.find("/.git") == -1:
+                if (
+                    os.path.splitext(name)[1] in ALLOWED_FILE_EXTENSIONS
+                    and root.find("/.terraform") == -1
+                    and root.find("/.git") == -1
+                ):
                     filenames.append(os.path.join(root, name))
     elif os.path.isfile(path):
         name = os.path.basename(path)
@@ -48,9 +53,10 @@ def get_tags(path=""):
                 if not line and line.startswith("#"):
                     continue
                 if line.find("source") >= 0 and line.find(".zip") > 0:
-                    module_tags[name].append(line.split()[2].strip("\""))
+                    module_tags[name].append(line.split()[2].strip('"'))
 
     modules_tags_queue.put(module_tags)
+
 
 def get_tf_module_version(paths=PATHS):
     threads = []
@@ -60,7 +66,7 @@ def get_tf_module_version(paths=PATHS):
             print(f"Directory/File does not exist '{path}'.")
             continue
 
-        thread = Thread(target=get_tags, kwargs={"path": path,})
+        thread = Thread(target=get_tags, kwargs={"path": path})
         thread.daemon = True
         thread.start()
         threads.append(thread)
@@ -84,8 +90,13 @@ def get_tf_module_version(paths=PATHS):
 
 
 def main():
-    parser = argparse.ArgumentParser(description='Get terraform source module versions.', formatter_class=argparse.ArgumentDefaultsHelpFormatter)
-    parser.add_argument('-p', '--paths', required=True, nargs="+", help='Directories/files to check.')
+    parser = argparse.ArgumentParser(
+        description="Get terraform source module versions.",
+        formatter_class=argparse.ArgumentDefaultsHelpFormatter,
+    )
+    parser.add_argument(
+        "-p", "--paths", required=True, nargs="+", help="Directories/files to check."
+    )
     args = parser.parse_args()
 
     paths = args.paths
@@ -93,5 +104,6 @@ def main():
     modules = get_tf_module_version(paths=paths)
     print(json.dumps(modules, indent=2))
 
-if __name__ == '__main__':
+
+if __name__ == "__main__":
     sys.exit(main())

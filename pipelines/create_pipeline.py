@@ -18,7 +18,6 @@ How to:
 """
 
 import requests
-from collections import defaultdict
 import sys
 import logging
 from urllib.parse import quote_plus
@@ -36,13 +35,21 @@ REFERENCE_PARAMETER = "?ref={reference}"
 PIPELINE_ENDPOINT = "/pipeline" + f"{REFERENCE_PARAMETER}"
 PROJECT_TAGS_ENDPOINT = f"{PROJECT_ENDPOINT}" + f"{PIPELINE_ENDPOINT}"
 
-def create_pipeline(url=environment_variables.URL, project_id=environment_variables.PROJECT_ID, reference=environment_variables.REFERENCE, headers=None):
+
+def create_pipeline(
+    url=environment_variables.URL,
+    project_id=environment_variables.PROJECT_ID,
+    reference=environment_variables.REFERENCE,
+    headers=None,
+):
     url = url + GITHUB_API_ENDPOINT
 
     project_endpoint = PROJECT_ENDPOINT.format(project_id=quote_plus(project_id))
-    complete_url = url + project_endpoint + PIPELINE_ENDPOINT.format(reference=reference)
-    response = requests.post(url = complete_url, headers=headers)
-    if not response.status_code in [200, 201]:
+    complete_url = (
+        url + project_endpoint + PIPELINE_ENDPOINT.format(reference=reference)
+    )
+    response = requests.post(url=complete_url, headers=headers)
+    if response.status_code not in [200, 201]:
         error = {
             "message": "Cannot create pipeline.",
             "reason": f"Received status code {response.status_code} with {response.text}.",
@@ -79,14 +86,16 @@ def main():
     import arguments
 
     parser = arguments.get_cli_arguments()
-    parser.add_argument('-p', '--project', required=True, default="-1", help='Gitlab project id.')
+    parser.add_argument(
+        "-p", "--project", required=True, default="-1", help="Gitlab project id."
+    )
 
     args = parser.parse_args()
 
     if args.debug:
-         logger.setLevel(logging.DEBUG)
+        logger.setLevel(logging.DEBUG)
     else:
-         logger.setLevel(logging.INFO)
+        logger.setLevel(logging.INFO)
 
     private_token = args.token
     project_id = args.project
@@ -98,7 +107,9 @@ def main():
         "Content-Type": "application/json",
     }
 
-    created_pipeline = create_pipeline(url=url, project_id=project_id, reference=reference, headers=headers)
+    created_pipeline = create_pipeline(
+        url=url, project_id=project_id, reference=reference, headers=headers
+    )
     print(created_pipeline)
 
 

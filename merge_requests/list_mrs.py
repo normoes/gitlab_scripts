@@ -26,7 +26,6 @@ Attention:
 import requests
 import os
 import argparse
-from collections import defaultdict
 import sys
 import logging
 
@@ -55,7 +54,10 @@ PROJECT_TAGS_ENDPOINT = f"{PROJECT_ENDPOINT}" + f"{TAGS_ENDPOINT}"
 CAN_BE_MERGED = "can_be_merged"
 CANNOT_BE_MERGED = "cannot_be_merged"
 
-def list_mrs(url=URL, project_id=PROJECT_ID, group_id=GROUP_ID, state=STATE_DEFAULT, headers=None):
+
+def list_mrs(
+    url=URL, project_id=PROJECT_ID, group_id=GROUP_ID, state=STATE_DEFAULT, headers=None
+):
     url = url + GITHUB_API_ENDPOINT
 
     endpoint = ""
@@ -64,8 +66,8 @@ def list_mrs(url=URL, project_id=PROJECT_ID, group_id=GROUP_ID, state=STATE_DEFA
     elif group_id:
         endpoint = GROUP_ENDPOINT.format(group_id=group_id)
     complete_url = url + endpoint + MR_ENDPOINT + f"?state={state}"
-    response = requests.get(url = complete_url, headers=headers)
-    if not response.status_code in [200, 201]:
+    response = requests.get(url=complete_url, headers=headers)
+    if response.status_code not in [200, 201]:
         return {
             "error": "Cannot get merge request.",
             "reason": "Received status code {response.status_code} with {response.text}.",
@@ -89,18 +91,20 @@ def list_mrs(url=URL, project_id=PROJECT_ID, group_id=GROUP_ID, state=STATE_DEFA
         # if user_info:
         #     assignee_can_merge = user_info.get("can_merge", None)
 
-        mrs.append({
-            "iid": iid,
-        #     "assignee_can_merge": assignee_can_merge,
-            "merge_status": merge_status,
-            "has_conflicts": has_conflicts,
-            "web_url": web_url,
-            "project_id": project_id,
-            "group_id": group_id,
-        #     "assignee_id": assignee_id,
-        #     "source_branch": source_branch,
-        #     "target_branch": target_branch,
-        })
+        mrs.append(
+            {
+                "iid": iid,
+                #     "assignee_can_merge": assignee_can_merge,
+                "merge_status": merge_status,
+                "has_conflicts": has_conflicts,
+                "web_url": web_url,
+                "project_id": project_id,
+                "group_id": group_id,
+                #     "assignee_id": assignee_id,
+                #     "source_branch": source_branch,
+                #     "target_branch": target_branch,
+            }
+        )
 
     return mrs
 
@@ -108,30 +112,49 @@ def list_mrs(url=URL, project_id=PROJECT_ID, group_id=GROUP_ID, state=STATE_DEFA
 def main():
     from _version import __version__
 
-    parser = argparse.ArgumentParser(description='List open MR.', epilog="python list_mrs.py --token $(pass show work/CSS/gitlab/private_token) --url <gitlab_url> --project <gitlab_project_id>", formatter_class=argparse.ArgumentDefaultsHelpFormatter)
+    parser = argparse.ArgumentParser(
+        description="List open MR.",
+        epilog="python list_mrs.py --token $(pass show work/CSS/gitlab/private_token) --url <gitlab_url> --project <gitlab_project_id>",
+        formatter_class=argparse.ArgumentDefaultsHelpFormatter,
+    )
     parser.add_argument(
         "--version",
         action="version",
         version="%(prog)s {version}".format(version=__version__),
     )
 
-    parser.add_argument('-u', '--url', required=True, default="https://example.gitlab.com", help='Gitlab host/url/server.')
-    parser.add_argument('-p', '--project', required=True, default="-1", help='Gitlab project id.')
-    parser.add_argument('-g', '--group', required=True, default="-1", help='Gitlab group id.')
-    parser.add_argument('-s', '--state', default=STATE_DEFAULT, help='State of MRs to be listed.')
-    parser.add_argument('-t', '--token', nargs='?', help='Private Token to access gitlab API. If not given as argument, set GITLAB_PRIVATE_TOKEN.')
     parser.add_argument(
-        "--debug", action='store_true',  help="Show debug info."
+        "-u",
+        "--url",
+        required=True,
+        default="https://example.gitlab.com",
+        help="Gitlab host/url/server.",
     )
+    parser.add_argument(
+        "-p", "--project", required=True, default="-1", help="Gitlab project id."
+    )
+    parser.add_argument(
+        "-g", "--group", required=True, default="-1", help="Gitlab group id."
+    )
+    parser.add_argument(
+        "-s", "--state", default=STATE_DEFAULT, help="State of MRs to be listed."
+    )
+    parser.add_argument(
+        "-t",
+        "--token",
+        nargs="?",
+        help="Private Token to access gitlab API. If not given as argument, set GITLAB_PRIVATE_TOKEN.",
+    )
+    parser.add_argument("--debug", action="store_true", help="Show debug info.")
 
     args = parser.parse_args()
 
     if args.debug:
-         logger.setLevel(logging.DEBUG)
-         logging.getLogger("EMPTY_MRS").setLevel(logging.DEBUG)
+        logger.setLevel(logging.DEBUG)
+        logging.getLogger("EMPTY_MRS").setLevel(logging.DEBUG)
     else:
-         logger.setLevel(logging.INFO)
-         logging.getLogger("EMPTY_MRS").setLevel(logging.INFO)
+        logger.setLevel(logging.INFO)
+        logging.getLogger("EMPTY_MRS").setLevel(logging.INFO)
 
     private_token = args.token
     project_id = args.project
@@ -144,7 +167,9 @@ def main():
         "Content-Type": "application/json",
     }
 
-    listed_mrs = list_mrs(url=url, project_id=project_id, group_id=group_id, state=state, headers=headers)
+    listed_mrs = list_mrs(
+        url=url, project_id=project_id, group_id=group_id, state=state, headers=headers
+    )
     print(*listed_mrs, sep="\n")
     # for k, v in tags.items():
     #     print(k)
@@ -156,6 +181,7 @@ def main():
         result = empty_mrs(url=url, mr=mr, headers=headers)
         if result:
             print(result)
+
 
 if __name__ == "__main__":
     sys.exit(main())

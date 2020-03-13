@@ -1,10 +1,33 @@
 repos:
-- repo: git://github.com/pre-commit/pre-commit-hooks
-  rev: v2.2.3
+- repo: https://github.com/pre-commit/pre-commit-hooks
+  rev: v2.5.0
   hooks:
-    - id: check-yaml
     - id: end-of-file-fixer
     - id: trailing-whitespace
-    - id: check-case-conflict
-    - id: check-merge-conflict
     - id: check-executables-have-shebangs
+    - id: check-merge-conflict
+    - id: debug-statements
+- repo: https://gitlab.com/pycqa/flake8
+  rev: 3.7.9
+  hooks:
+    - id: flake8
+- repo: https://github.com/psf/black
+  rev: 19.10b0
+  hooks:
+    - id: black
+      exclude: |
+        (?x)(
+            migrations/|
+            ^\.git/|
+            ^cache/|
+            ^\.cache/|
+            ^\.venv/|
+            ^\.local
+        )
+      language_version: python3.7
+      stages: [commit]
+- repo: https://github.com/cryptosphere-systems/pre-commit-hooks-bandit.git
+  rev: v1.0.4
+  hooks:
+  - id: python-bandit-vulnerability-check
+    files: .py$

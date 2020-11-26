@@ -17,10 +17,11 @@ How to:
   * The url can be given as argument (-u, --url)
 """
 
-import requests
 import sys
 import logging
 from urllib.parse import quote_plus
+
+import requests
 
 import environment_variables
 
@@ -46,9 +47,12 @@ def create_mr(
     source_branch=environment_variables.SOURCE_BRANCH,
     target_branch=environment_variables.TARGET_BRANCH,
     title=environment_variables.MR_TITLE,
+    description=environment_variables.MR_DESCRIPTION,
     assignee_id=environment_variables.ASSIGNEE_ID,
+    milestone_id=environment_variables.MILESTONE_ID,
     headers=None,
     remove_source_branch=False,
+    only_check_differences=False,
 ):
     url = url + GITHUB_API_ENDPOINT
 
@@ -58,10 +62,11 @@ def create_mr(
         "target_branch": target_branch,
         "remove_source_branch": remove_source_branch,
         "title": f"{title}",
+        "description": description,
         "assignee_id": assignee_id,
     }
 
-    project_endpoint = PROJECT_ENDPOINT.format(project_id=quote_plus(project_id))
+    project_endpoint = PROJECT_ENDPOINT.format(project_id=quote_plus(str(project_id)))
     # Compare branches before creating the merge request.
     # Using '&straight=true' (default is 'false') to show 'diffs' in response.
     # Using 'false' returned empty 'diffs'.
@@ -70,6 +75,7 @@ def create_mr(
         + project_endpoint
         + f"/repository/compare?from={source_branch}&to={target_branch}&straight=true"
     )
+
     response = requests.get(url=complete_url, headers=headers)
     if response.status_code not in [200, 201]:
         error = {
@@ -91,9 +97,39 @@ def create_mr(
     diffs = json_response["diffs"]
 
     if not diffs:
+        if not only_check_differences:
+            error = {
+                "message": CANNOT_BE_MERGED,
+                "reason": "No changes detected. Not creating empty MR.",
+                "project_id": project_id,
+            }
+            logger.error(error)
+            return {
+                "error": error,
+                "project_id": project_id,
+                "source_branch": source_branch,
+                "target_branch": target_branch,
+                "url": complete_url,
+            }
+    # When only showing differences between the given branches.
+    if only_check_differences:
+        return {
+            "diffs": diffs,
+            "project_id": project_id,
+            "source_branch": source_branch,
+            "target_branch": target_branch,
+            "url": complete_url,
+        }
+
+    complete_url = url + project_endpoint + MR_ENDPOINT
+
+    try:
+        if int(milestone_id) > -1:
+            data.update({"milestone_id": milestone_id})
+    except (ValueError) as e:
         error = {
-            "message": CANNOT_BE_MERGED,
-            "reason": "No changes detected. Not creating empty MR.",
+            "message": "Wrong milestone.",
+            "reason": f"Not a valid milestone. Not creating MR. {str(e)}",
             "project_id": project_id,
         }
         logger.error(error)
@@ -105,7 +141,6 @@ def create_mr(
             "url": complete_url,
         }
 
-    complete_url = url + project_endpoint + MR_ENDPOINT
     response = requests.post(url=complete_url, json=data, headers=headers)
     if response.status_code not in [200, 201]:
         error = {
@@ -130,6 +165,11 @@ def create_mr(
     has_conflicts = json_response.get("has_conflicts", None)
     web_url = json_response.get("web_url", None)
     user_info = json_response.get("user", None)
+    milestone = json_response.get("milestone", None)
+    milestone_title = ""
+    if milestone:
+        milestone_title = milestone.get("title", None)
+
     assignee_can_merge = None
     if user_info:
         assignee_can_merge = user_info.get("can_merge", None)
@@ -144,11 +184,13 @@ def create_mr(
         "assignee_id": assignee_id,
         "source_branch": source_branch,
         "target_branch": target_branch,
+        "milestone": milestone_title,
     }
 
 
 def main():
     import arguments
+    import json
 
     parser = arguments.get_cli_arguments()
     parser.add_argument(
@@ -167,9 +209,12 @@ def main():
     source_branch = args.source_branch
     target_branch = args.target_branch
     title = args.title
+    description = args.description
     assignee_id = args.assignee_id
+    milestone_id = args.milestone_id
     url = args.url
     remove_source_branch = args.remove_source_branch
+    only_check_differences = args.only_check_diffs
 
     headers = {
         "PRIVATE-TOKEN": private_token,
@@ -182,11 +227,14 @@ def main():
         source_branch=source_branch,
         target_branch=target_branch,
         title=title,
+        description=description,
         assignee_id=assignee_id,
+        milestone_id=milestone_id,
         headers=headers,
         remove_source_branch=remove_source_branch,
+        only_check_differences=only_check_differences,
     )
-    print(created_mr)
+    print(json.dumps(created_mr))
 
 
 if __name__ == "__main__":

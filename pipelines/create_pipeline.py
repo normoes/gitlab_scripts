@@ -44,7 +44,7 @@ def create_pipeline(
 ):
     url = url + GITHUB_API_ENDPOINT
 
-    project_endpoint = PROJECT_ENDPOINT.format(project_id=quote_plus(project_id))
+    project_endpoint = PROJECT_ENDPOINT.format(project_id=quote_plus(str(project_id)))
     complete_url = (
         url + project_endpoint + PIPELINE_ENDPOINT.format(reference=reference)
     )

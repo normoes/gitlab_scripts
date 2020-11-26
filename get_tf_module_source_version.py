@@ -50,7 +50,7 @@ def get_tags(path=""):
         with open(name, "r") as file_handler:
             for line in file_handler:
                 line = line.strip()
-                if not line and line.startswith("#"):
+                if not line or line.startswith("#"):
                     continue
                 if line.find("source") >= 0 and line.find(".zip") > 0:
                     module_tags[name].append(line.split()[2].strip('"'))

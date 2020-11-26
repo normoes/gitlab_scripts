@@ -1,6 +1,5 @@
 import sys
 import logging
-import json
 
 from create_mr import create_mr
 import environment_variables
@@ -16,9 +15,12 @@ def create_mrs(
     source_branch=environment_variables.SOURCE_BRANCH,
     target_branch=environment_variables.TARGET_BRANCH,
     title=environment_variables.MR_TITLE,
+    description=environment_variables.MR_DESCRIPTION,
     assignee_id=environment_variables.ASSIGNEE_ID,
+    milestone_id=environment_variables.MILESTONE_ID,
     headers=None,
     remove_source_branch=False,
+    only_check_differences=False,
 ):
     mrs = []
     try:
@@ -31,8 +33,11 @@ def create_mrs(
                     source_branch=source_branch,
                     target_branch=target_branch,
                     title=title,
+                    description=description,
                     assignee_id=assignee_id,
+                    milestone_id=milestone_id,
                     remove_source_branch=remove_source_branch,
+                    only_check_differences=only_check_differences,
                     headers=headers,
                 )
             )
@@ -44,6 +49,7 @@ def create_mrs(
 
 def main():
     import arguments
+    import json
 
     parser = arguments.get_cli_arguments()
     parser.add_argument(
@@ -66,9 +72,12 @@ def main():
     source_branch = args.source_branch
     target_branch = args.target_branch
     title = args.title
+    description = args.description
     assignee_id = args.assignee_id
+    milestone_id = args.milestone_id
     url = args.url
     remove_source_branch = args.remove_source_branch
+    only_check_differences = args.only_check_diffs
 
     headers = {
         "PRIVATE-TOKEN": private_token,
@@ -81,9 +90,12 @@ def main():
         source_branch=source_branch,
         target_branch=target_branch,
         title=title,
+        description=description,
         assignee_id=assignee_id,
+        milestone_id=milestone_id,
         headers=headers,
         remove_source_branch=remove_source_branch,
+        only_check_differences=only_check_differences,
     )
     logger.debug(created_mrs)
     for mr in created_mrs:

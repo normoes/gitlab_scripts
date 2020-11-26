@@ -25,7 +25,6 @@ Attention:
 
 import requests
 import os
-import argparse
 import sys
 import logging
 
@@ -110,6 +109,8 @@ def list_mrs(
 
 
 def main():
+    import argparse
+    import json
     from _version import __version__
 
     parser = argparse.ArgumentParser(
@@ -180,7 +181,7 @@ def main():
         # This seems to contains empty MRs.
         result = empty_mrs(url=url, mr=mr, headers=headers)
         if result:
-            print(result)
+            print(json.dumps(result, indent=4))
 
 
 if __name__ == "__main__":

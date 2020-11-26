@@ -38,14 +38,22 @@ def get_cli_arguments():
     parser.add_argument(
         "--title", required=True, default="MR title.", help="Merge request title."
     )
+    parser.add_argument("--description", default="", help="Merge request description.")
     parser.add_argument(
         "--assignee-id", required=True, default=-1, help="Gitlab user id of assignee."
     )
+    parser.add_argument("--milestone-id", default=-1, help="Gitlab milestone id.")
     # default=False is implied by action='store_true'
     parser.add_argument(
         "--remove-source-branch",
         action="store_true",
         help="Remove the source branch after merging.",
+    )
+    # default=False is implied by action='store_true'
+    parser.add_argument(
+        "--only-check-diffs",
+        action="store_true",
+        help="Only check differences between branches.",
     )
     parser.add_argument("--debug", action="store_true", help="Show debug info.")
 

@@ -16,6 +16,12 @@ How to:
   * If the gitlab group id is set both ways, GITLAB_GROUP_ID has precedence.
   * The url can be given as argument (-u, --url)
   * The output can be limited to only the most recent tags of each repository (-l, --latest)
+
+* '--latest' only returns the latest tag.
+* without '--latets':
+    - returns the last 5 tags.
+    - The number of tags returned can be modified with '--amount'
+    - '--amount -1' returns all tags found for the project.
 """
 
 
@@ -23,8 +29,10 @@ import os
 from collections import defaultdict
 import sys
 import json
+import logging
 from threading import Thread
 from queue import Queue
+from urllib.parse import quote_plus
 
 import requests
 from requests.exceptions import (
@@ -33,31 +41,50 @@ from requests.exceptions import (
     Timeout,
 )
 
+logging.basicConfig()
+logger = logging.getLogger("GitlabTags")
+logger.setLevel(logging.INFO)
+
 PRIVATE_TOKEN = os.environ.get("GITLAB_PRIVATE_TOKEN", None)
 GROUP_ID = os.environ.get("GITLAB_GROUP_ID", None)
+PROJECT_ID = os.environ.get("PROJECT_GROUP_ID", None)
 URL = os.environ.get("GITLAB_URL", None)
 
 GITHUB_API_ENDPOINT = "/api/v4"
 ISSUES_ENDPOINT = "/issues"
 PROJECT_ENDPOINT = "/projects" + "/{project_id}"
+GROUP_ENDPOINT = "/groups" + "/{group_id}"
 TAGS_ENDPOINT = "/repository/tags"
 PROJECT_TAGS_ENDPOINT = f"{PROJECT_ENDPOINT}" + f"{TAGS_ENDPOINT}"
 
 projects_tags_queue = Queue()
 
+NUMBER_OF_TAGS_TO_SHOW = 5
 
-def get_tags(url=URL, project=None, headers=None, latest_only=False):
+
+def get_tags(
+    url=URL,
+    project=None,
+    headers=None,
+    latest_only=False,
+    number_of_tags=NUMBER_OF_TAGS_TO_SHOW,
+):
     """Get tags from a repository.
 
     The API request returns an ordered list of tags.
     The most recent tag is the first one in the list.
 
     :param latest_only: Only return the most recent tag.
+    :param number_of_tags: Number of tags to show. Not considered with 'latest_only'.
     """
 
     project_id = project.get("id", None)
     project_name = project.get("name", None)
-    project_endpoint = PROJECT_TAGS_ENDPOINT.format(project_id=project_id)
+    logger.debug(project)
+    project_endpoint = PROJECT_TAGS_ENDPOINT.format(
+        project_id=quote_plus(str(project_id))
+    )
+    logger.debug(url + project_endpoint)
     response = requests.get(url + project_endpoint, headers=headers)
     if not response.status_code == 200:
         print(
@@ -66,60 +93,82 @@ def get_tags(url=URL, project=None, headers=None, latest_only=False):
         sys.exit(1)
     tags = response.json()
     project_tags = defaultdict(list)
+    count = 0
     for tag in tags:
         project_tags[project_name].append(tag.get("name", None))
         if latest_only:
             break
+        else:
+            count += 1
+            if number_of_tags > 0 and number_of_tags - count == 0:
+                break
 
     projects_tags_queue.put(project_tags)
 
     return latest_only
 
 
-def get_project_tags(url=URL, group_id=GROUP_ID, headers=None, latest_only=False):
+def get_group_tags(
+    url=URL,
+    group_id=GROUP_ID,
+    project_id=PROJECT_ID,
+    headers=None,
+    latest_only=False,
+    number_of_tags=NUMBER_OF_TAGS_TO_SHOW,
+):
     url = url + GITHUB_API_ENDPOINT
 
-    group_endpoint = f"/groups/{group_id}/projects"
-    print(f"{url + group_endpoint}")
-    try:
-        response = requests.get(url + f"{group_endpoint}", headers=headers)
-        if not response.status_code == 200:
-            print(f"Received status code {response.status_code} with {response.text}")
-            sys.exit(1)
-    except (RequestsConnectionError, ReadTimeout, Timeout) as e:
-        # TODO Add logging.
-        # TODO Add error key and message.
-        print(f"Some error occurred: '{str(e)}'.")
+    if group_id:
+        group_endpoint = (
+            GROUP_ENDPOINT.format(group_id=quote_plus(str(group_id))) + "/projects"
+        )
+        logger.debug(f"GROUP URL: {url+group_endpoint}")
+    elif project_id:
+        project_endpoint = PROJECT_TAGS_ENDPOINT.format(
+            project_id=quote_plus(str(project_id))
+        )
+        logger.debug(f"PROJECT URL: {url+project_endpoint}")
 
-    projects = response.json()
+    response = None
+    projects = []
+    if group_id:
+        try:
+            response = requests.get(url + f"{group_endpoint}", headers=headers)
+            projects = response.json()
+            if not response.status_code == 200:
+                print(
+                    f"Received status code {response.status_code} with {response.text}"
+                )
+                sys.exit(1)
+        except (RequestsConnectionError, ReadTimeout, Timeout) as e:
+            # TODO Add logging.
+            # TODO Add error key and message.
+            print(f"Some error occurred: '{str(e)}'.")
+    elif project_id:
+        projects = [{"id": project_id, "name": project_id,}]
 
-    projects_tags = defaultdict(list)
-
-    if not latest_only:
-        threads = []
+    threads = []
 
     for project in projects:
-        if not latest_only:
-            thread = Thread(
-                target=get_tags,
-                kwargs={
-                    "url": url,
-                    "project": project,
-                    "headers": headers,
-                    "latest_only": latest_only,
-                },
-            )
-            thread.daemon = True
-            thread.start()
-            threads.append(thread)
-        else:
-            if get_tags(project=project, headers=headers, latest_only=latest_only):
-                break
+        # if not latest_only:
+        thread = Thread(
+            target=get_tags,
+            kwargs={
+                "url": url,
+                "project": project,
+                "headers": headers,
+                "latest_only": latest_only,
+                "number_of_tags": number_of_tags,
+            },
+        )
+        thread.daemon = True
+        thread.start()
+        threads.append(thread)
 
-    if not latest_only:
-        for thread in threads:
-            thread.join()  # wait for end of threads
+    for thread in threads:
+        thread.join()  # wait for end of threads
 
+    projects_tags = defaultdict(list)
     while not projects_tags_queue.empty():
         # project_tags = projects_tags_queue.get()
         # projects_tags[next(iter(project_tags))] = project[next(iter(project_tags))]
@@ -130,7 +179,8 @@ def get_project_tags(url=URL, group_id=GROUP_ID, headers=None, latest_only=False
             projects_tags.update(project_tags)
         projects_tags_queue.task_done()
 
-    return sorted(projects_tags.items())
+    return projects_tags
+    # return sorted(projects_tags.items())
 
 
 def main():
@@ -148,31 +198,64 @@ def main():
         default="https://example.gitlab.com",
         help="Gitlab host/url/server.",
     )
-    parser.add_argument(
-        "-g", "--group", required=True, default="-1", help="Gitlab group id."
-    )
+    group = parser.add_mutually_exclusive_group(required=True)
+    group.add_argument("-g", "--group", default="", help="Gitlab group id.")
+    group.add_argument("-p", "--project", default="", help="Gitlab project id.")
     parser.add_argument(
         "-t",
         "--token",
         nargs="?",
         help="Private Token to access gitlab API. If not given as argument, set GITLAB_PRIVATE_TOKEN.",
     )
+    parser.add_argument(
+        "--amount",
+        type=int,
+        default=NUMBER_OF_TAGS_TO_SHOW,
+        help="Number of tags to show. '-1' returns all tags.",
+    )
     # default=False is implied by action='store_true'
     parser.add_argument(
         "-l", "--latest", action="store_true", help="Show most recent tag only."
     )
+    parser.add_argument("--debug", action="store_true", help="Show debug info.")
+
     args = parser.parse_args()
 
+    debug = args.debug
+    if debug:
+        logger.setLevel(logging.DEBUG)
+    else:
+        logger.setLevel(logging.INFO)
+
+    logger.debug(args.url)
     url = args.url
+    logger.debug(url)
     private_token = args.token
     group_id = args.group
+    project_id = args.project
     latest_only = args.latest
+    number_of_tags = args.amount
 
     headers = {"PRIVATE-TOKEN": private_token}
 
-    tags = get_project_tags(
-        url=url, group_id=group_id, headers=headers, latest_only=latest_only
-    )
+    tags = {}
+    if group_id:
+        tags = get_group_tags(
+            url=url,
+            group_id=group_id,
+            headers=headers,
+            latest_only=latest_only,
+            number_of_tags=number_of_tags,
+        )
+    elif project_id:
+        tags = get_group_tags(
+            url=url,
+            project_id=project_id,
+            headers=headers,
+            latest_only=latest_only,
+            number_of_tags=number_of_tags,
+        )
+
     print(json.dumps(tags, indent=2))
 
 
